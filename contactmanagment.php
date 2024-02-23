@@ -21,14 +21,23 @@
     <input type="email" name="email" required><br>
 
     <input type="submit" name="add" value="Add Contact">
- 
 </form>
-<?php
-session_start();
 
-if (!isset($_SESSION['contacts'])) {
-    $_SESSION['contacts'] = [];
+<?php
+if (!file_exists('contacts.txt')) {
+    file_put_contents('contacts.txt', '');
 }
+
+function readContactsFromFile() {
+    $contents = file_get_contents('contacts.txt');
+    return json_decode($contents, true) ?: [];
+}
+
+function saveContactsToFile($contacts) {
+    file_put_contents('contacts.txt', json_encode($contacts));
+}
+
+$contacts = readContactsFromFile();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST["add"])) {
@@ -42,12 +51,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'email' => $email
         ];
 
-        $_SESSION['contacts'][] = $contact;
+        $contacts[] = $contact;
+        saveContactsToFile($contacts);
         echo "Contact added successfully.";
     } elseif (isset($_POST["view"])) {
         echo "<h3>Contact List:</h3>";
         echo "<ul>";
-        foreach ($_SESSION['contacts'] as $key => $contact) {
+        foreach ($contacts as $key => $contact) {
             echo "<li>{$contact['name']} - Phone: {$contact['phone']}, Email: {$contact['email']}";
             echo " <form style='display:inline;' method='post' action=''>
                       <input type='hidden' name='edit_key' value='{$key}'>
@@ -62,7 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         echo "</ul>";
     } elseif (isset($_POST["edit"])) {
         $editKey = $_POST["edit_key"];
-        $editContact = $_SESSION['contacts'][$editKey];
+        $editContact = $contacts[$editKey];
         echo "<h3>Edit Contact:</h3>";
         echo "<form method='post' action=''>
                 <label for='name'>Name:</label>
@@ -83,17 +93,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $editedPhone = $_POST["edited_phone"];
         $editedEmail = $_POST["edited_email"];
 
-        $_SESSION['contacts'][$editKey] = [
+        $contacts[$editKey] = [
             'name' => $editedName,
             'phone' => $editedPhone,
             'email' => $editedEmail
         ];
 
+        saveContactsToFile($contacts);
         echo "Contact edited successfully.";
     } elseif (isset($_POST["delete"])) {
         $deleteKey = $_POST["delete_key"];
-        unset($_SESSION['contacts'][$deleteKey]);
-        $_SESSION['contacts'] = array_values($_SESSION['contacts']); // Reindex array after deletion of contact
+        unset($contacts[$deleteKey]);
+        $contacts = array_values($contacts); // Reindex array after deletion of contact
+        saveContactsToFile($contacts);
         echo "Contact deleted successfully.";
     }
 }
@@ -105,3 +117,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </div>
 </body>
 </html>
+
